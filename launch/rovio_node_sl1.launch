@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+  <node pkg="rovio" type="rovio_node" name="rovio" output="screen">
+  <param name="filter_config" value="$(find rovio)/cfg/rovio_sl1.info"/>
+  <param name="camera0_config" value="$(find rovio)/cfg/rovio_cam0_sl1_from_caminfo.yaml"/>  
+  <remap from="/cam0/image_raw" to="/aravis/baumer/camera_front_left/image_raw" />
+  <remap from="/imu0" to="/ouster_Roof/os_cloud_node/imu" />
+  <param name="/use_sim_time" value="true"/>
+  </node>
+</launch>

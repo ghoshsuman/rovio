@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+  <node pkg="rovio" type="rovio_node" name="rovio" output="screen">
+  <param name="filter_config" value="$(find rovio)/cfg/rovio_tumvieA.info"/>
+  <param name="camera0_config" value="$(find rovio)/cfg/rovio_cam0_tumvieA.yaml"/>
+  <param name="camera1_config" value="$(find rovio)/cfg/rovio_cam1_tumvieA.yaml"/>
+  </node>
+</launch>
