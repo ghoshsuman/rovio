@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+  <node pkg="rovio" type="rovio_node" name="rovio" output="screen">
+  <param name="filter_config" value="$(find rovio)/cfg/rovio_mono_DAVIS-00000008.info"/>
+  <param name="camera0_config" value="$(find rovio)/cfg/davis.yaml"/>
+  <remap from="/cam0/image_raw" to="/dvs/image_raw" />
+  <remap from="/imu0" to="/dvs/imu" />
+  </node>
+</launch>

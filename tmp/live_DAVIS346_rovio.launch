@@ -1,0 +1,173 @@
+<launch>
+
+        <!-- <node pkg="nodelet" type="nodelet" name="evo_nodelet_manager" args="manager" output="screen"/> -->
+        
+        <arg name="camera_name" />
+             
+        <!-- DAVIS driver -->
+        <!-- <node pkg="nodelet" type="nodelet" name="davis_ros_driver" args="load davis_ros_driver/DavisRosDriverNodelet evo_nodelet_manager" output="screen" > -->
+<!--        <node name="davis_ros_driver" pkg="davis_ros_driver" type="davis_ros_driver" >
+          <param name="exposure" value="5000" />
+          <param name="autoexposure_enabled" value="true" /> 
+        </node>
+-->
+
+
+	<!-- ROVIO -->
+	<node pkg="rovio" type="rovio_node" name="rovio" output="screen">
+	<param name="filter_config" value="$(find dvs_tracking)/parameters/rovio_mono_DAVIS-00000008.info"/>
+	<param name="camera0_config" value="$(find rpg_calib)/dvs/$(arg camera_name).yaml"/>
+	<remap from="/cam0/image_raw" to="/dvs/image_raw" />
+	<remap from="/imu0" to="/dvs/imu" />
+    </node>
+        
+        <!-- EVO: mapping + tracking -->
+        <remap from="events" to="/dvs/events" />
+        <remap from="remote_key" to="/evo/remote_key" />
+        
+        <param name="camera_name" value="$(arg camera_name)" />
+        <param name="calib_file" value="$(find rpg_calib)/dvs/$(arg camera_name).yaml" />
+        
+        <param name="min_depth" value="0.4" />
+        <param name="max_depth" value="4.0" />
+        <param name="num_depth_cells" value="60" />
+        
+        <!-- Angle of view of the DSI (cone) -->
+        <param name="fov_virtual_camera_deg" value="70.0" />
+        
+        <!-- Number of horizontal/vertical pixels in the DSI -->
+        <param name="virtual_width" value="346" />
+        <param name="virtual_height" value="260" />
+
+        <!-- Monocular event-based (DVS) mapping -->
+        <!-- <node pkg="nodelet" type="nodelet" name="dvs_mapping" args="load dvs_mapping/DvsMappingNodelet evo_nodelet_manager" output="screen"> -->
+        <node name="dvs_mapping" pkg="dvs_mapping" type="mapping_test" output="screen">
+          
+          <!-- Depth estimation using number of votes -->
+          <param name="adaptive_threshold_kernel_size" value="5" />
+          <param name="adaptive_threshold_c" value="7" />
+          <param name="voxel_filter_leaf_size" value="0.005" />
+          <param name="type_focus_measure" value="0" /> <!-- "1": maximum local variance of DSI, "2": maximum local gradient magnitude of DSI, else: maximum of DSI -->
+          <param name="half_patchsize" value="1" /> <!-- patch size for computing the local variance or gradient magnitude of the DSI, used if type_focus_measure=1|2 -->
+          
+          <!-- Median filter parameters -->
+          <param name="median_filter_size" value="15" />
+          
+          <!-- Number of updates of the KF after which it is recreated from scratch -->
+          <param name="kf_updates" value="0" />
+
+          <!-- 0: Reset. 1: Trilinear interpolation. 2: Synthesize from Point Cloud -->
+          <param name="map_propagation_method" value="0" />
+
+          <!-- Use given number of events to recreate KF from scratch -->
+          <param name="events_to_recreate_kf" value="1000000" />
+
+          <!-- Skip event batches for speedup -->
+          <param name="skip_batches" value="0" />
+
+          <!-- Use given frame to lookup pose (good for testing against ground truth) -->
+          <param name="dvs_frame_id" value="/camera0" /> <!-- Pose T_world_dvs -->
+          
+          <!-- Outlier filtering -->
+          <param name="radius_search" value="0.2" />
+          <param name="min_num_neighbors" value="4" />
+          
+        </node>
+        
+        <node name="trigger_map_expansion" pkg="evo_utils" type="trigger_map_expansion.py" output="screen" >
+          <remap from="remote_key" to="evo/remote_key" />
+          <remap from="pointcloud" to="dvs_mapping/pointcloud" />
+          
+          <param name="dvs_frame_id" value="/camera0" />
+          <param name="threshold" value="0.3" />
+        </node>
+
+        <!-- <node pkg="nodelet" type="nodelet" name="dvs_tracking" args="load dvs_tracking/DvsTrackingNodelet evo_nodelet_manager" output="screen"> -->
+        <node name="dvs_tracking" pkg="dvs_tracking" type="dvs_tracking_ros" required="true" output="screen">
+
+          <param name="dvs_frame_id" value="/camera0" /> <!-- Pose T_world_dvs -->
+
+            <!-- Stochastic gradient descent -->
+            <!-- Batch size for each iteration -->
+            <param name="batch_size"        value="500" />
+            <!-- Maximum number of iterations -->
+            <param name="max_iterations"    value="100" />
+            <param name="pyramid_levels"    value="2" />
+            <!-- Minimum update step to stop tracking -->
+            <param name="min_epsilon"       value=".0005" />
+
+
+            <!-- Scaling of the weights. Can be Huber, Tukey or Least-square, hardcoded in lk_se3.cpp -->
+            <param name="weight_scale"   value="1." />
+
+            <!-- Kernel size for Gaussian blur of the reference frame -->
+            <param name="map_blur"          value="5" />
+
+            <!-- Discard frames if event rate is below this value -->
+            <param name="noise_rate"        value="15000" />
+
+            <!-- Number of events to draw on event image -->
+            <param name="frame_size"       value="7500" />
+            <!-- Number of events to advance after drawing an event image -->
+            <param name="step_size"        value="25000" />
+
+            <!-- Limit the transformation on each Gauss-Newton update iteration -->
+            <param name="max_relative_translation_percent" value="5." />
+            <param name="max_rotation_degree"              value="5." />
+            <param name="max_event_rate"                   value="4000000" />
+
+            <!-- Window size of the average filter on the poses -->
+            <param name="pose_mean_filter_size"    value="6" />
+
+            <!-- Request KF update after given number of events -->
+            <param name="events_per_kf"  value="150000" />
+
+            <!-- Number of event-map overlap frames per second -->
+            <param name="event_map_overlap_rate" value="15" />
+
+
+            <remap from="pointcloud" to="dvs_mapping/pointcloud" />
+        </node>
+        
+     <node name="dvs_reconstruction"  pkg="dvs_reconstruction" type="dvs_reconstruction_ros" required="false" output="screen">
+        <param name="duration"   value=".3" />
+        <param name="window_size" value="5000" />
+        <param name="sigma_m"    value="10.0" />
+        <param name="init_cov"   value="10.0" />
+        <param name="map_blur"   value="15" />
+        
+        <param name="dvs_frame_id" value="/camera0" />
+	<remap from="map" to="dvs_mapping/pointcloud" />
+    </node> 
+        
+    <!--<node name="visualisation" pkg="rviz" type="rviz" output="screen" args="-d $(find dvs_tracking)/rviz/live.rviz" /> -->
+        
+    <!-- <node name="DSI_viz" pkg="evo_utils" type="publish_confidence.py" output="screen" >
+      <remap from="voxel_grid" to="dvs_mapping/voxel_grid" />
+    </node> -->
+    
+    <node name="tf_to_camera_marker" pkg="evo_utils" type="tf_to_camera_markers.py" output="screen" >
+      <param name="marker_scale" value="0.2" />
+    </node>
+    
+    <node name="snakify" pkg="evo_utils" type="snakify.py" output="screen" >
+      <param name="length" value="100" />
+    </node>
+    
+    <node name="rqt_evo" pkg="rqt_evo" type="rqt_evo"></node>
+    
+  <!-- visualization -->
+  <node name="dvs_renderer_left" pkg="dvs_renderer" type="dvs_renderer" output="screen">
+    <param name="display_method" value="red-blue"/>
+    <remap from="events" to="/dvs/events" />
+    <!-- <remap from="image" to="/dvs/image_raw" /> -->
+    <remap from="dvs_rendering" to="dvs_rendering" />
+  </node>
+<!--<node type="rviz" name="rviz" pkg="rviz" args="-d $(find dvs_tracking)/rviz/live.rviz" />-->
+
+
+    
+</launch>
+
+
+
