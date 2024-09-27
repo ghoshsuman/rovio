@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<launch>
+  <node pkg="rovio" type="rovio_rosbag_loader" name="rovio" output="screen">
+  <param name="filter_config" value="$(find rovio)/cfg/rovio.info"/>
+  <param name="camera0_config" value="$(find rovio)/cfg/DAVIS-mvsec.yaml"/>
+  <!--param name="camera1_config" value="$(find rovio)/cfg/euroc_cam1.yaml"/-->
+  <param name="rosbag_filename" value="/mnt/HD4TB/data/mvsec/indoor_flying1_combined.bag.filtered"/>
+  <param name="imu_topic_name" value="/davis/left/imu"/>
+  <param name="cam0_topic_name" value="/davis/left/image_raw"/>
+  <!--param name="cam1_topic_name" value="/cam1/image_raw"/-->
+  </node>
+</launch>

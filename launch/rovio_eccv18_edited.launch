@@ -4,7 +4,7 @@
   <node pkg="rovio" type="rovio_node" name="rovio" output="screen">
   <param name="filter_config" value="$(find rovio)/cfg/test.info"/>
   <param name="camera0_config" value="$(find rovio)/cfg/DAVIS-eccv18.yaml"/>
-  <remap from="/cam0/image_raw" to="/davis_left/image_raw" />
-  <remap from="/imu0" to="/davis_left/imu" />
+  <remap from="/cam0/image_raw" to="/davis/left/image_raw" />
+  <remap from="/imu0" to="/davis/left/imu" />
   </node>
 </launch>
